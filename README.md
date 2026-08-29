@@ -1,7 +1,7 @@
 # INF2004 Lab Repository
 
 This repository contains all the labs for the INF2004 module, consolidated into a single workspace. Each lab is placed into its respective sub-folder and covers different aspects of embedded systems and microcontroller programming using the Raspberry Pi Pico.
-r
+
 ## Table of Contents
 
 - [LAB 1: Microcontroller and its Development Environment](./LAB1/)
