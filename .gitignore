@@ -1,0 +1,18 @@
+# Instructor material - full solutions for every Bug Hunt.
+# Kept locally, never published: this repository is public and students read it.
+_instructor/
+
+# Build output
+build/
+build-debug/
+build-release/
+*.uf2
+*.elf
+*.bin
+*.hex
+*.map
+*.dis
+
+# Internal review notes. Not published: KIV.md contains the answer to
+# the LAB2 "Deliberate Intermittent Fault" exercise.
+KIV.md

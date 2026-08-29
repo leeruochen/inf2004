@@ -1,0 +1,21 @@
+BUG HUNT #1 - bit manipulation
+
+count_bits
+  count_bits(0x000000FF)             got 8          expect 8          ok
+  count_bits(0x00000024)             got 2          expect 2          ok
+  count_bits(-1)                     got 32         expect 32         ok
+even_parity
+  even_parity(0x000000FF)            got 1          expect 1          ok
+  even_parity(0x00000007)            got 0          expect 0          ok
+pin_is_clear (mask 0x24)
+  pin_is_clear(LED_MASK, 2)          got 0          expect 0          ok
+  pin_is_clear(LED_MASK, 3)          got 1          expect 1          ok
+  pin_is_clear(LED_MASK, 5)          got 0          expect 0          ok
+reverse_bits
+  reverse_bits(0x00000001)           got 0x80000000  expect 0x80000000  ok
+  reverse_bits(0x12345678)           got 0x1E6A2C48  expect 0x1E6A2C48  ok
+  reverse_bits(0xFFFFFFFF)           got 0xFFFFFFFF  expect 0xFFFFFFFF  ok
+swap_nibbles
+  swap_nibbles(0x12345678)           got 0x21436587  expect 0x21436587  ok
+
+ALL TESTS PASS  (0 failures)
