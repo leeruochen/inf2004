@@ -8,9 +8,9 @@ they are the evidence that you were reasoning rather than guessing.
 
 | # | Symptom observed | Hypothesis | Experiment (ONE change) | Predicted | Result | Conclusion |
 |---|---|---|---|---|---|---|
-| 1 | | | | | | |
-| 2 | | | | | | |
-| 3 | | | | | | |
+| 1 | unable to compile due to unknown type name 'uint8_t'| missing library | add #include <stdint.h>| now the missing types will be known| errors related to missing library are gone| missing library was the issue|
+| 2 | unable to compile due to missing ;| syntax error| add ; required| error will be gone| error is gone| be mindful for missing ; especially in c|
+| 3 | missing | | | | | |
 | 4 | | | | | | |
 | 5 | | | | | | |
 | 6 | | | | | | |

@@ -65,7 +65,7 @@ int main()
         printf("p & q = %d\n", p & q);   // Bitwise AND
         printf("p | q = %d\n", p | q);   // Bitwise OR
         printf("p ^ q = %d\n", p ^ q);   // Bitwise XOR
-        printf("~p = %d\n", ~p);         // Bitwise NOT
+        printf("~p = %d\n", ~p);         // Bitwise NOT, prints -6
         printf("q << 1 = %d\n", q << 1); // Left shift
         printf("q >> 1 = %d\n", q >> 1); // Right shift
 

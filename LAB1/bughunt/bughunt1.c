@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef PICO_ON_DEVICE
 #include "pico/stdlib.h"
@@ -24,14 +25,16 @@
 /* ------------------------------------------------------------------
  * 1. Count how many bits are set in a value.
  *    count_bits(0xFF) must be 8.  count_bits(-1) must be 32.
+ *    pico is a 32-bit machine, so int is 32 bits. changing 1 to -1 inverts every bit and add 1, therefore all bits are set.
  * ------------------------------------------------------------------ */
 uint8_t count_bits(int value)
 {
-    uint8_t count = 0
+    uint32_t v = (uint32_t)value; // Cast to unsigned to avoid issues with negative values
+    uint8_t count = 0;
 
-    while (value) {
-        count += value & 1;
-        value >>= 1;
+    while (v) {
+        count += v & 1;
+        v >>= 1;
     }
     return count;
 }
@@ -46,6 +49,7 @@ bool even_parity(uint32_t value)
 
     if (bits % 2 == 0) {
         return true;
+    }
     else {
         return false;
     }
@@ -53,12 +57,13 @@ bool even_parity(uint32_t value)
 
 /* ------------------------------------------------------------------
  * 3. True when the given pin's bit is CLEAR in the mask.
- *    pin_is_clear(0x24, 2) is false - bit 2 is set.
+ *    pin_is_clear(0x24, 2) is false - bit 2 is set. 
+ *    0x24 = 0010 0100
  *    pin_is_clear(0x24, 3) is true  - bit 3 is clear.
  * ------------------------------------------------------------------ */
 bool pin_is_clear(uint32_t mask, unsigned pin)
 {
-    return (mask & 1u << pin == 0);
+    return (mask & (1u << pin)) == 0;
 }
 
 /* ------------------------------------------------------------------
@@ -69,7 +74,12 @@ uint32_t reverse_bits(uint32_t v)
 {
     uint32_t r = 0;
 
-    for (int i = 0; i <= 32; i++)
+    //used to be i <= 32, which is out of bounds for a 32-bit integer, 31-32 = -1.
+    // this shows undefined behavior may silently pass on laptops where i <= 32 may pass, but on the pico it will fail as it is out of bounds.
+    for (int i = 0; i < 32; i++)
+        // (v >> i) & 1, v >> i shifts the bit at position i to LSB, & 1 will perform AND operation so that only LSB is left.
+        // << (31 - i) shifts the LSB to the reversed position.
+        // r |=, performs an OR operation against r and the shifted bit, if the shifted bit is 1, it will set the corresponding bit in r to 1, if it is 0, it will leave the corresponding bit in r unchanged.
         r |= ((v >> i) & 1) << (31 - i);
 
     return r;
@@ -124,7 +134,7 @@ int main(void)
     check_int("even_parity(0x000000FF)", even_parity(0x000000FFu), 1);
     check_int("even_parity(0x00000007)", even_parity(0x00000007u), 0);
 
-    printf("pin_is_clear (mask 0x24)\n");
+    printf("pin_is_clear (mask 0x24)\n"); // 0x24 = 0010 0100
     check_int("pin_is_clear(LED_MASK, 2)", pin_is_clear(LED_MASK, 2), 0);
     check_int("pin_is_clear(LED_MASK, 3)", pin_is_clear(LED_MASK, 3), 1);
     check_int("pin_is_clear(LED_MASK, 5)", pin_is_clear(LED_MASK, 5), 0);
