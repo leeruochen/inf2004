@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+// bug 1, missing include for uint8_t and uint32_t types, added #include <stdint.h>
 #include <stdint.h>
 
 #ifdef PICO_ON_DEVICE
@@ -29,8 +30,13 @@
  * ------------------------------------------------------------------ */
 uint8_t count_bits(int value)
 {
+    // bug 3, missing cast to uint32_t to avoid issues with negative values
+    // passing in -1 will cause infinite loop as v >>= 1 will add 1 to the leftmost bit, this means v will never become 0
+    // >>= 1 works by shifting bits of v to the right by 1 position, and filling the leftmost bit with the sign bit (0 for positive, 1 for negative). This means that if v is negative, the leftmost bit will always be 1, and v will never become 0.
+    // therefore we cast v to uint32_t to avoid issues with negative values, as the leftmost bit will always be 0 for unsigned integers.
     uint32_t v = (uint32_t)value; // Cast to unsigned to avoid issues with negative values
-    uint8_t count = 0;
+
+    uint8_t count = 0; // bug 2, missing ;
 
     while (v) {
         count += v & 1;
@@ -63,6 +69,24 @@ bool even_parity(uint32_t value)
  * ------------------------------------------------------------------ */
 bool pin_is_clear(uint32_t mask, unsigned pin)
 {
+    // originally return (mask & 1u << pin == 0);
+    // bug 4, missing parentheses around the bitwise AND operation, causing the comparison 
+    // what does 1u << pin do here? what is 1u? 
+    // 1u tells c to treat 1 as an unsigned int, when doing bit manipulation, signed ints can cause issues
+
+    // pin_is_clear(0x24, 2)
+    // an example, 0x24 = 0010 0100
+    // since pin = 2 is set, we want to find if bit 2 is set, in this case, it is set.
+    // 1u << 2 equates to 100, so
+    // 0010 0100 & 0000 0100, this would give us 0000 0100, which would return false as it is not == 0
+
+    // what if 3 is put in?
+    // 1u << 3 equates to 1000
+    // 0010 0100 & 0000 1000, gives us 0000 0000, return true
+
+    // why the original was broken, because of operator precedence, the original code was evaluated as:
+    // mask & (1u << pin == 0)
+    // << comes first, then ==, then &.
     return (mask & (1u << pin)) == 0;
 }
 
@@ -74,10 +98,10 @@ uint32_t reverse_bits(uint32_t v)
 {
     uint32_t r = 0;
 
-    //used to be i <= 32, which is out of bounds for a 32-bit integer, 31-32 = -1.
-    // this shows undefined behavior may silently pass on laptops where i <= 32 may pass, but on the pico it will fail as it is out of bounds.
+    // bug 5, changed i <= 32 to i < 32, because 32 is out of bounds for a 32-bit integer, the highest bit is bit 31.
+    // this shows undefined behavior may silently pass on laptops where i <= 32 may pass (if we ran this code on vscode), but on the pico it will fail as it is out of bounds.
     for (int i = 0; i < 32; i++)
-        // (v >> i) & 1, v >> i shifts the bit at position i to LSB, & 1 will perform AND operation so that only LSB is left.
+        // (v >> i) & 1, v >> i shifts the bit at position i to LSB, & 1 will perform bitwise AND operation so that only LSB is left.
         // << (31 - i) shifts the LSB to the reversed position.
         // r |=, performs an OR operation against r and the shifted bit, if the shifted bit is 1, it will set the corresponding bit in r to 1, if it is 0, it will leave the corresponding bit in r unchanged.
         r |= ((v >> i) & 1) << (31 - i);
