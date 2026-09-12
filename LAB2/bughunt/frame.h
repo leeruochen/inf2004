@@ -32,10 +32,10 @@
 #define FRAME_MAX      16u     /* biggest frame we will ever buffer    */
 
 typedef struct {
-    uint16_t sensor_id;
-    uint8_t  status;
-    int16_t  temp_c_x10;
-    uint32_t timestamp_ms;
+    uint16_t sensor_id; // uint16 requires 2 bytes
+    uint8_t  status; // uint8 requires 1 byte
+    int16_t  temp_c_x10; // int16 requires 2 bytes
+    uint32_t timestamp_ms; // uint32 requires 4 bytes
 } reading_t;
 
 /* Build a frame into out[]. Returns the total number of bytes written. */

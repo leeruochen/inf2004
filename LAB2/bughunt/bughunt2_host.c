@@ -55,6 +55,19 @@ int main(void)
     printf("BUG HUNT #2 - frame codec\n");
     printf("sizeof(reading_t) = %zu bytes\n\n", sizeof(reading_t));
 
+    // BUG #2: check the struct padding
+    // to check the struct padding
+    // printf("Memory offset of sensor_id:    %zu\n", offsetof(reading_t, sensor_id)); 
+    // printf("Memory offset of status:       %zu\n", offsetof(reading_t, status));
+    // printf("Memory offset of temp_c_x10:   %zu\n", offsetof(reading_t, temp_c_x10));
+    // printf("Memory offset of timestamp_ms: %zu\n\n", offsetof(reading_t, timestamp_ms));
+    
+    // results
+    // Memory offset of sensor_id:    0
+    // Memory offset of status:       2
+    // Memory offset of temp_c_x10:   4
+    // Memory offset of timestamp_ms: 8
+
     for (unsigned v = 0; v < sizeof vectors / sizeof vectors[0]; v++) {
         const vector_t *t = &vectors[v];
         uint8_t buf[64];

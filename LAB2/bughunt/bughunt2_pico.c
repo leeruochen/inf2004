@@ -37,7 +37,14 @@ static void link_init(void)
     uart_set_fifo_enabled(LINK_UART, true);
 
     /* keeps the serial monitor tidy */
-    uart_set_translate_crlf(LINK_UART, true);
+    // BUG #5: this is a text formatting convenience that looks for line feed byte such as \n or 0x0A
+    // if found, automatically tranmists a carriage return \r or 0x0D before it.
+    // an example of what happens on pico
+    // tx: AA 09 12 34 01 00 FD 0A 0B 0C 0D 72
+    // rx: AA 09 12 34 01 00 FD 0D 0A 0B 0C 0D
+    // we can see that 0D comes before 0A, which meant that the carriage return was added, corrupting the frame.
+    // originally, this translate_crlf was set to true, we set to false to ensure UART transmits raw binary without any interception
+    uart_set_translate_crlf(LINK_UART, false);
 }
 
 static void send_reading(const reading_t *r)
@@ -58,6 +65,13 @@ static void rx_poll(void)
 
     while (uart_is_readable(LINK_UART)) {
         buf[n++] = (uint8_t)uart_getc(LINK_UART);
+        // BUG #5: buf accepts every incoming byte into buf blindly and increments til it reaches 12.
+        // if the first byte is not a start of frame, we need to reset the buffer and start over.
+        // this forces the receiver to reject garbage bytes and stay hunting for a real SOF byte which is 0xAA. 
+        // this is a security measure to prevent an attacker from sending garbage bytes to the receiver and cause a buffer overflow.
+        if (n == 1 && buf[0] != FRAME_SOF){
+            n = 0; // reset buffer if first byte is not start of frame
+        }
 
         if (n == 2 + FRAME_PAYLOAD + 1) {
             reading_t r;
@@ -113,3 +127,8 @@ int main(void)
         sleep_ms(10);
     }
 }
+
+// reflection
+// Plain char is unsigned on the Pico's compiler (arm-none-eabi-gcc) and signed on your laptop's x86 GCC. If you ever store a received byte in a char and compare it to 0xAA, that comparison is true on the Pico and false on your laptop, from identical source.
+// Nothing in this hunt depends on it. But when the host harness and the hardware disagree and you cannot see why, this is the first thing to check — and it is why "it passed on my laptop" is never the end of the argument.
+// Use uint8_t for bytes. Always.
