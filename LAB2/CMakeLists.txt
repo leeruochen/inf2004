@@ -28,30 +28,56 @@
 # # example_auto_set_url(uart_rx)
 
 
-# for main.c (CHALLENGE)
+# # for main.c (CHALLENGE)
+# cmake_minimum_required(VERSION 3.13)
+
+# include(pico_sdk_import.cmake)
+
+# project(uart_button_project C CXX ASM)
+
+# set(CMAKE_C_STANDARD 11)
+# set(CMAKE_CXX_STANDARD 17)
+
+# pico_sdk_init()
+
+# add_executable(uart_button_project
+#     exercise.c
+# )
+
+# # Send printf() output over USB, not the default UART, since
+# # UART1 (GP8/GP9) is already used for the loopback.
+# pico_enable_stdio_usb(uart_button_project 1)
+# pico_enable_stdio_uart(uart_button_project 0)
+
+# pico_add_extra_outputs(uart_button_project)
+
+# target_link_libraries(uart_button_project
+#     pico_stdlib
+#     hardware_uart
+# )
+
+# for bitwisechal.c
 cmake_minimum_required(VERSION 3.13)
-
+ 
 include(pico_sdk_import.cmake)
-
-project(uart_button_project C CXX ASM)
-
+ 
+project(led_binary_project C CXX ASM)
+ 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-
+ 
 pico_sdk_init()
-
-add_executable(uart_button_project
-    main.c
+ 
+add_executable(led_binary_project
+    bitwisechal.c
 )
-
-# Send printf() output over USB, not the default UART, since
-# UART1 (GP8/GP9) is already used for the loopback.
-pico_enable_stdio_usb(uart_button_project 1)
-pico_enable_stdio_uart(uart_button_project 0)
-
-pico_add_extra_outputs(uart_button_project)
-
-target_link_libraries(uart_button_project
+ 
+pico_enable_stdio_usb(led_binary_project 1)
+pico_enable_stdio_uart(led_binary_project 0)
+ 
+pico_add_extra_outputs(led_binary_project)
+ 
+target_link_libraries(led_binary_project
     pico_stdlib
-    hardware_uart
 )
+ 
