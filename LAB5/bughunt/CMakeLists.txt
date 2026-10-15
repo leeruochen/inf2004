@@ -6,7 +6,7 @@ include(pico_sdk_import.cmake)
 # FREERTOS_KERNEL_PATH must point at the FreeRTOS-Kernel you downloaded in
 # the main part of Lab 5. Set it in the CMake Tools environment, or pass
 #   cmake -DFREERTOS_KERNEL_PATH=/path/to/FreeRTOS-Kernel ..
-include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
+include(FreeRTOS_Kernel_import.cmake)
 
 project(bughunt5 C CXX ASM)
 

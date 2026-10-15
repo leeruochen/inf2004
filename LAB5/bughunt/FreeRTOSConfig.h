@@ -41,8 +41,10 @@
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hooks and run-time introspection ------------------------------- */
-#define configCHECK_FOR_STACK_OVERFLOW          0
-#define configUSE_MALLOC_FAILED_HOOK            0
+// bug 1: configCHECK_FOR_STACK_OVERFLOW was set to 0, which disables the stack overflow checking. It should be set to 2 to enable stack overflow checking.
+// bug 2: configUSE_MALLOC_FAILED_HOOK was set to 0, which disables the malloc failed hook. It should be set to 1 to enable the malloc failed hook.
+#define configCHECK_FOR_STACK_OVERFLOW          2
+#define configUSE_MALLOC_FAILED_HOOK            1
 #define configUSE_DAEMON_TASK_STARTUP_HOOK      0
 #define configGENERATE_RUN_TIME_STATS           0
 #define configUSE_TRACE_FACILITY                1
@@ -84,7 +86,8 @@
  * currently a no-op, which means every one of those checks is
  * silently discarded.
  * ---------------------------------------------------------------- */
-#define configASSERT(x)
+// bug 1: configASSERT was defined as an empty macro, which disables the kernel's invariant checks. It should be defined to check the condition and handle failures appropriately.
+#define configASSERT(x) if ((x) == 0) { taskDISABLE_INTERRUPTS(); for (;;); }
 
 /* Single core only - SMP disabled, as the lab instructs ---------- */
 #if FREE_RTOS_KERNEL_SMP
