@@ -35,8 +35,13 @@ static bool sample_cb(struct repeating_timer *t)
 {
     (void)t;
 
-    uint16_t raw_a = adc_read();
+    // bug 6: reading before adc input is selected...
+    // uint16_t raw_a = adc_read();
+    // adc_select_input(0);
+
+    // fix for bug 6
     adc_select_input(0);
+    uint16_t raw_a = adc_read();
 
     adc_select_input(1);
     uint16_t raw_b = adc_read();
@@ -47,7 +52,10 @@ static bool sample_cb(struct repeating_timer *t)
     uint16_t mv = adc_to_mv((uint16_t)filt_a);
     float    v  = mv / 1000.0f;
 
-    uint32_t delta = TARGET_MV - mv;
+    // bug 8: delta is declared as uint32 but if mv > TARGET_MV, delta would be negative
+    // uint32_t delta = TARGET_MV - mv;
+    // fix for bug 8: change to int32_t so that 2's complement is used to represent negs
+    int32_t delta = (int32_t)TARGET_MV - (int32_t)mv;
 
     if (delta < 0) {
         if (duty > 0) duty--;
@@ -56,7 +64,8 @@ static bool sample_cb(struct repeating_timer *t)
     }
     pwm_set_gpio_level(PWM_PIN, duty);
 
-    printf("A raw=%4u filt=%4u  %4u mV (%d V)   B raw=%4u filt=%4u   duty=%u/%u\n",
+    // bug 7: v is declared as a float, previously it was (%d V), this expected a double but v is a float so change it.
+    printf("A raw=%4u filt=%4u  %4u mV (%.2f V)   B raw=%4u filt=%4u   duty=%u/%u\n",
            raw_a, (unsigned)filt_a, mv, v, raw_b, (unsigned)filt_b, duty, wrap);
 
     return true;
