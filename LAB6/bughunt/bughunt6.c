@@ -43,13 +43,17 @@
 #define FRAME_SOF   0xA5u
 #define POLY        0x07u
 #define LFSR_SEED   0xACE1u
-#define LFSR_TAPS   0xB000u
+// bug 3: LFSR_TAPS is defined as 0xB000, but the correct mask for taps at bits 16,14,13,11 0x0400 + 0x2000 + 0x4000 + 0x8000 = 0xB400 in the SPECIFICATION at the top of this file
+// fix: change the definition of LFSR_TAPS to 0xB400
+#define LFSR_TAPS   0xB400u
 
 /* ------------------------------------------------------------------ */
-static uint8_t  crc_table[255];
+static uint8_t  crc_table[256];
 static uint16_t lfsr_state = LFSR_SEED;
 static bool     crc_ready  = false;
 
+// bug 1: crc_table is declared with 255 elemnts, but crc_init loops i from 0 to 255
+// fix: change the declaration of crc_table to have 256 elements
 void crc_init(void)
 {
     for (int i = 0; i < 256; i++) {
@@ -63,7 +67,16 @@ void crc_init(void)
 
 uint8_t crc8(const uint8_t *data, uint8_t len)
 {
-    uint8_t crc;
+    // bug 12: crc_ready is defined and set to true in crc_init, but crc8 does not check if its ready
+    // compiler flags crc_ready as unused, any caller that calls crc8 without calling crc_init gets wrong results
+    // fix: add a check for crc_ready and call crc_init if it is false
+    if (!crc_ready)
+        crc_init();
+
+    // bug 2: crc needs to be initialized before use
+    // fix: initialize crc to 0 before the loop
+    // uint8_t crc;
+    uint8_t crc = 0x00u;
 
     for (uint8_t i = 0; i < len; i++)
         crc = crc_table[crc ^ data[i]];
@@ -89,7 +102,9 @@ uint32_t lfsr_period(void)
     do {
         lfsr_next();
         n++;
-    } while (lfsr_state != start && n < 200);
+    } while (lfsr_state != start && n < 70000u);
+    // bug 4: the loop stops as soon as n reaches 200, making it impossible to reach the full period of 65535
+    // fix: change the loop condition to n < 70000u, originally it was n < 200u
 
     return n;
 }
@@ -102,7 +117,18 @@ typedef struct {
 
 uint32_t parse_ts(const uint8_t *frame)
 {
-    return *(uint32_t *)&frame[2];
+    // bug 5: 3 errors at once, frame is a uint8 array. &frame[2] is guaranteed to be at an offset of +2 bytes
+    // meaning it is halfword (2-byte) aligned, not word-aligned(4-byte).
+    // ARM in rp2040 does not support unaligned access.
+    // error 2: wrong endianness, the timestamp in frame[2..5] is big-endian
+    // rp2040 is little-endian so a raw uint32 reads 0x44332211 instead of 0x11223344
+    // error 3: the *frame taken in is a const, casting frame to uint32_t * discards const and violates C's strict aliasing rules.
+    // return *(uint32_t *)&frame[2];
+    //fix: assemble 32-bit int byte by byte in big endian
+    return ((uint32_t)frame[2] << 24) |
+           ((uint32_t)frame[3] << 16) |
+           ((uint32_t)frame[4] << 8)  |
+           ((uint32_t)frame[5]);
 }
 
 bool parse_frame(const uint8_t *frame, uint8_t frame_len, reading_t *out)
@@ -110,7 +136,12 @@ bool parse_frame(const uint8_t *frame, uint8_t frame_len, reading_t *out)
     if (frame_len < 3)         return false;
     if (frame[0] != FRAME_SOF) return false;
 
+    // bug 6: parse frame checks frame_len < 3, reads frame[1] then immediately uses frame[1] as len to read frame[2 + len] without checking that frame_len >= 3 + len
+    // fix: check that frame_len >= 3 + len before reading frame[2 + len]
     uint8_t len = frame[1];
+    if (len < 6 || (uint16_t)len + 3u > frame_len)
+        return false;
+    // fix: this check ensures that the frame has enough bytes to contain the payload and the CRC byte.
 
     if (crc8(&frame[2], len) != frame[2 + len])
         return false;
@@ -124,7 +155,10 @@ bool parse_frame(const uint8_t *frame, uint8_t frame_len, reading_t *out)
 /* ------------------------------------------------------------------ */
 char *format_reading(const reading_t *r)
 {
-    char buf[32];
+    // bug 7: buf is a local array allocated on the stack frame of format_reading.
+    // returning buf returns a dangling pointer to stack memory that becomes invalid after the function returns.
+    // fix: declare buffer as static so lifetime extends across program execution
+    static char buf[32];
     snprintf(buf, sizeof buf, "t=%lu v=%u",
              (unsigned long)r->timestamp, r->value);
     return buf;
@@ -132,7 +166,10 @@ char *format_reading(const reading_t *r)
 
 char *label_for(const char *name)
 {
-    char *out = malloc(strlen(name));
+    // bug 8: strlen returns the number of chars excluding null terminator whereas strcpy copies the char plus the null terminator.
+    // every time label_for is called, malloc allocates a buffer that is one byte too small
+    // fix: add 1 to the length passed to malloc to account for the null terminator 
+    char *out = malloc(strlen(name) + 1);
     strcpy(out, name);
     return out;
 }
@@ -143,14 +180,20 @@ char *label_for(const char *name)
  * ------------------------------------------------------------------ */
 void calibration_delay(void)
 {
-    for (uint32_t i = 0; i < 6000; i++)
+    // bug 9: loop increments a non-volatile var, i, from 0 to 6000, with no side effects.
+    // with -o0, compiler optimizes and emits the loop instructions
+    // with -o2 and -o3, compiler deletes the loop
+    // fix: make the loop counter volatile
+    for (volatile uint32_t i = 0; i < 6000; i++)
         ;
 }
 
 /* ------------------------------------------------------------------
  * Wait for the acquisition ISR to signal that a conversion finished.
  * ------------------------------------------------------------------ */
-static bool conversion_done = false;
+// bug 10: conversion_done is modified by ISR(acquisition_isr) and polled in a spin-loop by main thread(wait_for_conversion) but it is not declared volatile, so the compiler may optimize away the loop in wait_for_conversion
+// fix: declare conversion_done as volatile so the compiler knows it can change at any time
+static volatile bool conversion_done = false;
 
 void acquisition_isr(void)
 {
@@ -170,7 +213,10 @@ void wait_for_conversion(void)
 uint32_t checksum_all(const uint8_t *data, uint16_t len)
 {
     uint32_t sum = 0;
-    for (uint8_t i = 0; i < len; i++)
+    // bug 11: parameter len is a uint16, but i is a uint8
+    // because i is uint8, if the loop reaches 255, it wraps around to 0, causeing a infinite loop
+    // fix: change the type of i to uint16_t
+    for (uint16_t i = 0; i < len; i++)
         sum += data[i];
     return sum;
 }
